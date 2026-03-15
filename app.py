@@ -2,9 +2,15 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import json, os, threading, time, logging
 from datetime import datetime
+import sys
+import types
+if 'imghdr' not in sys.modules:
+    imghdr = types.ModuleType('imghdr')
+    imghdr.what = lambda *a, **kw: None
+    sys.modules['imghdr'] = imghdr
 import tweepy
 
-app = Flask(__name__, static_folder='.')
+app = Flask(__name__, static_folder='static')
 CORS(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -24,7 +30,8 @@ def save_data(data):
 
 @app.route("/")
 def index():
-    return send_from_directory(".", "index.html")
+    return send_from_directory("static", "index.html")
+
 @app.route("/api/accounts", methods=["GET"])
 def get_accounts():
     data = load_data()
