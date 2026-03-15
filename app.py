@@ -10,7 +10,7 @@ if 'imghdr' not in sys.modules:
     sys.modules['imghdr'] = imghdr
 import tweepy
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='.')
 CORS(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
@@ -30,7 +30,7 @@ def save_data(data):
 
 @app.route("/")
 def index():
-    return send_from_directory("static", "index.html")
+   return send_from_directory(".", "index.html")
 
 @app.route("/api/accounts", methods=["GET"])
 def get_accounts():
