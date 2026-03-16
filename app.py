@@ -1,148 +1,171 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import json, os, threading, time, logging
+import json, os, threading, time, logging, sys, types
 from datetime import datetime
-import sys
-import types
+
 if 'imghdr' not in sys.modules:
     imghdr = types.ModuleType('imghdr')
     imghdr.what = lambda *a, **kw: None
     sys.modules['imghdr'] = imghdr
 import tweepy
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__, static_folder='.')
 CORS(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
-DATA_FILE = "data.json"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {"accounts": [], "posts": []}
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+def get_db():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def init_db():
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS accounts (
+                    id BIGINT PRIMARY KEY,
+                    name TEXT,
+                    api_key TEXT,
+                    api_secret TEXT,
+                    access_token TEXT,
+                    access_token_secret TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS posts (
+                    id BIGINT PRIMARY KEY,
+                    datetime TEXT,
+                    text TEXT,
+                    account_id BIGINT,
+                    posted BOOLEAN DEFAULT FALSE
+                )
+            """)
+        conn.commit()
 
-# ---- API endpoints ----
+try:
+    init_db()
+    logging.info("✅ データベース初期化完了")
+except Exception as e:
+    logging.error(f"❌ データベース初期化失敗: {e}")
 
 @app.route("/")
 def index():
-   return send_from_directory(".", "index.html")
+    return send_from_directory(".", "index.html")
 
 @app.route("/api/accounts", methods=["GET"])
 def get_accounts():
-    data = load_data()
-    # マスクして返す
-    accounts = []
-    for a in data["accounts"]:
-        accounts.append({
-            "id": a["id"],
-            "name": a["name"],
-            "hasKeys": bool(a.get("apiKey") and a.get("apiSecret") and a.get("accessToken") and a.get("accessTokenSecret"))
-        })
-    return jsonify(accounts)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, api_key != '' AND api_secret != '' AND access_token != '' AND access_token_secret != '' AS has_keys FROM accounts")
+            rows = cur.fetchall()
+    return jsonify([{"id": r["id"], "name": r["name"], "hasKeys": r["has_keys"]} for r in rows])
 
 @app.route("/api/accounts", methods=["POST"])
-def add_account():
-    data = load_data()
-    body = request.json
-    account = {
-        "id": body["id"],
-        "name": body["name"],
-        "apiKey": body.get("apiKey", ""),
-        "apiSecret": body.get("apiSecret", ""),
-        "accessToken": body.get("accessToken", ""),
-        "accessTokenSecret": body.get("accessTokenSecret", "")
-    }
-    # 既存のアカウントを更新or追加
-    existing = next((a for a in data["accounts"] if a["id"] == account["id"]), None)
-    if existing:
-        existing.update(account)
-    else:
-        data["accounts"].append(account)
-    save_data(data)
+def save_account():
+    b = request.json
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO accounts (id, name, api_key, api_secret, access_token, access_token_secret)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    api_key = EXCLUDED.api_key,
+                    api_secret = EXCLUDED.api_secret,
+                    access_token = EXCLUDED.access_token,
+                    access_token_secret = EXCLUDED.access_token_secret
+            """, (b["id"], b["name"], b.get("apiKey",""), b.get("apiSecret",""), b.get("accessToken",""), b.get("accessTokenSecret","")))
+        conn.commit()
     return jsonify({"ok": True})
 
-@app.route("/api/accounts/<account_id>", methods=["DELETE"])
+@app.route("/api/accounts/<int:account_id>", methods=["DELETE"])
 def delete_account(account_id):
-    data = load_data()
-    data["accounts"] = [a for a in data["accounts"] if str(a["id"]) != str(account_id)]
-    data["posts"] = [p for p in data["posts"] if str(p.get("accountId")) != str(account_id)]
-    save_data(data)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM accounts WHERE id = %s", (account_id,))
+            cur.execute("DELETE FROM posts WHERE account_id = %s", (account_id,))
+        conn.commit()
     return jsonify({"ok": True})
 
 @app.route("/api/posts", methods=["GET"])
 def get_posts():
-    data = load_data()
-    return jsonify(data["posts"])
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, datetime, text, account_id AS \"accountId\", posted FROM posts ORDER BY datetime")
+            rows = cur.fetchall()
+    return jsonify([dict(r) for r in rows])
 
 @app.route("/api/posts", methods=["POST"])
-def add_post():
-    data = load_data()
-    post = request.json
-    existing = next((p for p in data["posts"] if p["id"] == post["id"]), None)
-    if existing:
-        existing.update(post)
-    else:
-        data["posts"].append(post)
-    save_data(data)
+def save_post():
+    p = request.json
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO posts (id, datetime, text, account_id)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    datetime = EXCLUDED.datetime,
+                    text = EXCLUDED.text,
+                    account_id = EXCLUDED.account_id
+            """, (p["id"], p.get("datetime"), p.get("text"), p.get("accountId")))
+        conn.commit()
     return jsonify({"ok": True})
 
 @app.route("/api/posts/<int:post_id>", methods=["DELETE"])
 def delete_post(post_id):
-    data = load_data()
-    data["posts"] = [p for p in data["posts"] if p["id"] != post_id]
-    save_data(data)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM posts WHERE id = %s", (post_id,))
+        conn.commit()
     return jsonify({"ok": True})
 
 @app.route("/api/posts/bulk", methods=["POST"])
 def bulk_posts():
-    data = load_data()
     posts = request.json
-    for post in posts:
-        existing = next((p for p in data["posts"] if p["id"] == post["id"]), None)
-        if existing:
-            existing.update(post)
-        else:
-            data["posts"].append(post)
-    save_data(data)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for p in posts:
+                cur.execute("""
+                    INSERT INTO posts (id, datetime, text, account_id)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        datetime = EXCLUDED.datetime,
+                        text = EXCLUDED.text,
+                        account_id = EXCLUDED.account_id
+                """, (p["id"], p.get("datetime"), p.get("text"), p.get("accountId")))
+        conn.commit()
     return jsonify({"ok": True, "count": len(posts)})
-
-# ---- Scheduler ----
-posted_ids = set()
 
 def scheduler_loop():
     logging.info("⏰ スケジューラー起動")
     while True:
         try:
             now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            data = load_data()
-            for post in data["posts"]:
-                if post.get("datetime") == now and post["id"] not in posted_ids:
-                    posted_ids.add(post["id"])
-                    acct = next((a for a in data["accounts"] if str(a["id"]) == str(post.get("accountId"))), None)
-                    if not acct:
-                        logging.error(f"❌ アカウントが見つかりません: {post.get('accountId')}")
-                        continue
+            with get_db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT p.*, a.api_key, a.api_secret, a.access_token, a.access_token_secret, a.name as account_name FROM posts p JOIN accounts a ON p.account_id = a.id WHERE p.datetime = %s AND p.posted = FALSE", (now,))
+                    posts = cur.fetchall()
+                for post in posts:
                     try:
                         client = tweepy.Client(
-                            consumer_key=acct["apiKey"],
-                            consumer_secret=acct["apiSecret"],
-                            access_token=acct["accessToken"],
-                            access_token_secret=acct["accessTokenSecret"],
+                            consumer_key=post["api_key"],
+                            consumer_secret=post["api_secret"],
+                            access_token=post["access_token"],
+                            access_token_secret=post["access_token_secret"],
                         )
                         client.create_tweet(text=post["text"])
-                        logging.info(f"✅ 投稿成功 [{acct['name']}]: {post['text'][:30]}")
+                        with conn.cursor() as cur:
+                            cur.execute("UPDATE posts SET posted = TRUE WHERE id = %s", (post["id"],))
+                        conn.commit()
+                        logging.info(f"✅ 投稿成功 [{post['account_name']}]: {post['text'][:30]}")
                     except Exception as e:
                         logging.error(f"❌ 投稿失敗: {e}")
         except Exception as e:
             logging.error(f"スケジューラーエラー: {e}")
         time.sleep(30)
 
-# バックグラウンドスレッドで起動
 t = threading.Thread(target=scheduler_loop, daemon=True)
 t.start()
 
