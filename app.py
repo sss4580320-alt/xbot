@@ -25,7 +25,7 @@ def get_db():
         host=u.hostname,
         port=u.port or 5432,
         database=u.path.lstrip("/"),
-        ssl_context=False
+        ssl_context=None
     )
 
 def init_db():
