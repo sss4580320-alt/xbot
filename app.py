@@ -137,11 +137,10 @@ def bulk_posts():
 
 def scheduler_loop():
     logging.info("⏰ スケジューラー起動")
+    JST = timezone(timedelta(hours=9))
     while True:
         try:
-            JST = timezone(timedelta(hours=9))
-　　　　　　　　now = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
-
+            now = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
             db = get_db()
             rows = db.run("""
                 SELECT p.id, p.text, a.api_key, a.api_secret, a.access_token, a.access_token_secret, a.name
