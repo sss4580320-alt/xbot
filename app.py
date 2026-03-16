@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import json, os, threading, time, logging, sys, types
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
 if 'imghdr' not in sys.modules:
@@ -139,7 +139,9 @@ def scheduler_loop():
     logging.info("⏰ スケジューラー起動")
     while True:
         try:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            JST = timezone(timedelta(hours=9))
+　　　　　　　　now = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
+
             db = get_db()
             rows = db.run("""
                 SELECT p.id, p.text, a.api_key, a.api_secret, a.access_token, a.access_token_secret, a.name
