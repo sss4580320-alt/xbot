@@ -116,7 +116,6 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
   <div class="content" id="mainContent">
     <div id="alertBox" class="alert"></div>
 
-    <!-- Schedule Tab -->
     <div id="tab-schedule">
       <div class="stats">
         <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">合計予約</div></div>
@@ -145,7 +144,6 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
       <div id="emptyState" style="text-align:center;padding:3rem 0;color:var(--text3);font-size:14px;display:none;">まだ予約投稿がありません</div>
     </div>
 
-    <!-- Accounts Tab -->
     <div id="tab-accounts" style="display:none;">
       <div id="alertBox2" class="alert"></div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">最大10アカウントまで登録できます。</p>
@@ -153,7 +151,6 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
       <button class="btn btn-accent btn-full" onclick="addAccount()" id="addAcctBtn">+ アカウントを追加</button>
     </div>
 
-    <!-- AI Tab -->
     <div id="tab-ai" style="display:none;">
       <div class="card">
         <div class="card-header">
@@ -199,7 +196,6 @@ input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webk
 </div>
 
 <script>
-const API = "";  // 同じサーバーなので空でOK
 let accounts = [];
 let posts = [];
 let nextPostId = Date.now();
@@ -207,32 +203,18 @@ const COLORS = ['#5352ed','#2ed573','#ff6b81','#ffa502','#1e90ff','#eccc68','#ff
 
 function today() { return new Date().toISOString().split('T')[0]; }
 
-async function apiGet(path) {
-  const r = await fetch(API + path); return r.json();
-}
-async function apiPost(path, data) {
-  const r = await fetch(API + path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); return r.json();
-}
-async function apiDelete(path) {
-  const r = await fetch(API + path, {method:'DELETE'}); return r.json();
-}
+async function apiGet(path) { const r = await fetch(path); return r.json(); }
+async function apiPost(path, data) { const r = await fetch(path, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); return r.json(); }
+async function apiDelete(path) { const r = await fetch(path, {method:'DELETE'}); return r.json(); }
 
-// ---- Init ----
 async function init() {
   try {
     const [accts, psts] = await Promise.all([apiGet('/api/accounts'), apiGet('/api/posts')]);
-    accounts = accts;
-    posts = psts;
-    renderAccounts();
-    renderPosts();
-    renderSelects();
-    updateStats();
-  } catch(e) {
-    showAlert('サーバーに接続できません', 'error');
-  }
+    accounts = accts; posts = psts;
+    renderAccounts(); renderPosts(); renderSelects(); updateStats();
+  } catch(e) { showAlert('サーバーに接続できません', 'error'); }
 }
 
-// ---- ACCOUNTS ----
 async function addAccount() {
   if (accounts.length >= 10) { showAlert('最大10アカウントです', 'error'); return; }
   const id = Date.now();
@@ -246,14 +228,7 @@ async function addAccount() {
 async function saveAcct(id) {
   const nameEl = document.querySelector(`[data-acct="${id}"] .acct-name-input`);
   const fields = document.querySelectorAll(`[data-acct="${id}"] .acct-field`);
-  const acct = {
-    id,
-    name: nameEl?.value || `アカウント`,
-    apiKey: fields[0]?.value || '',
-    apiSecret: fields[1]?.value || '',
-    accessToken: fields[2]?.value || '',
-    accessTokenSecret: fields[3]?.value || '',
-  };
+  const acct = { id, name: nameEl?.value || `アカウント`, apiKey: fields[0]?.value || '', apiSecret: fields[1]?.value || '', accessToken: fields[2]?.value || '', accessTokenSecret: fields[3]?.value || '' };
   await apiPost('/api/accounts', acct);
   const ok = acct.apiKey && acct.apiSecret && acct.accessToken && acct.accessTokenSecret;
   const existing = accounts.find(a => a.id == id);
@@ -316,17 +291,8 @@ function renderSelects() {
   ['qaAccount','bulkAccount'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML=opts; });
 }
 
-// ---- POSTS ----
-async function addPostToServer(post) {
-  await apiPost('/api/posts', post);
-  posts.push(post);
-}
-
-async function removePost(id) {
-  await apiDelete(`/api/posts/${id}`);
-  posts = posts.filter(p => p.id !== id);
-  renderPosts();
-}
+async function addPostToServer(post) { await apiPost('/api/posts', post); posts.push(post); }
+async function removePost(id) { await apiDelete(`/api/posts/${id}`); posts = posts.filter(p => p.id !== id); renderPosts(); }
 
 function renderPosts() {
   const list = document.getElementById('postList');
@@ -355,9 +321,9 @@ function renderPosts() {
   updateStats();
 }
 
-function updatePostDate(id, val) { const p=posts.find(p=>p.id===id); if(p){const t=p.datetime?.split(' ')[1]||'09:00'; p.datetime=val+' '+t; apiPost(`/api/posts`,p);} }
-function updatePostTime(id, val) { const p=posts.find(p=>p.id===id); if(p){const d=p.datetime?.split(' ')[0]||today(); p.datetime=d+' '+val; apiPost(`/api/posts`,p);} }
-function updatePostAcct(id, val) { const p=posts.find(p=>p.id===id); if(p){p.accountId=parseInt(val); apiPost(`/api/posts`,p);} }
+function updatePostDate(id, val) { const p=posts.find(p=>p.id===id); if(p){const t=p.datetime?.split(' ')[1]||'09:00'; p.datetime=val+' '+t; apiPost('/api/posts',p);} }
+function updatePostTime(id, val) { const p=posts.find(p=>p.id===id); if(p){const d=p.datetime?.split(' ')[0]||today(); p.datetime=d+' '+val; apiPost('/api/posts',p);} }
+function updatePostAcct(id, val) { const p=posts.find(p=>p.id===id); if(p){p.accountId=parseInt(val); apiPost('/api/posts',p);} }
 function autoResize(el) { el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 function sortPosts() { posts.sort((a,b)=>(a.datetime||'').localeCompare(b.datetime||'')); renderPosts(); showAlert('日付順に並べました','success'); }
 
@@ -398,20 +364,18 @@ async function confirmBulkAdd() {
     const p={id:nextPostId++, datetime:d.toISOString().split('T')[0]+' '+time, text, accountId:acctId};
     newPosts.push(p); posts.push(p); d.setDate(d.getDate()+1);
   });
-  await fetch(API+'/api/posts/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newPosts)});
+  await fetch('/api/posts/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newPosts)});
   renderPosts(); document.getElementById('bulkModal').classList.remove('open'); showAlert(lines.length+'件追加しました','success');
 }
 
-// ---- TABS ----
 function switchTab(name) {
-  ['schedule','accounts','ai'].forEach((t,i)=>{
+  ['schedule','accounts','ai'].forEach(t=>{
     document.getElementById('tab-'+t).style.display=t===name?'block':'none';
     document.getElementById('nav-'+t).classList.toggle('active',t===name);
   });
   document.getElementById('mainContent').scrollTop=0;
 }
 
-// ---- AI ----
 async function generateTweets() {
   const prompt=document.getElementById('aiPrompt').value.trim();
   if(!prompt){showAlert('キャラクター設定を入力してください','error');return;}
@@ -421,9 +385,9 @@ async function generateTweets() {
   const resEl=document.getElementById('aiResults');
   resEl.innerHTML='<div class="loading">生成中...</div>';
   try {
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:`以下のキャラクター設定でTwitter（X）の投稿文を${count}件生成してください。\n\nキャラクター設定: ${prompt}\n\n条件:\n- 各ツイートは140文字以内\n- 自然な口語体\n- 番号付きリストで出力（例: 1. ツイート内容）\n- ツイートのみ出力`}]})});
+    const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,count})});
     const data=await res.json();
-    const lines=(data.content?.[0]?.text||'').split('\n').filter(l=>/^\d+\./.test(l.trim()));
+    const lines=(data.text||'').split('\n').filter(l=>/^\d+\./.test(l.trim()));
     resEl.innerHTML='';
     lines.forEach(line=>{
       const content=line.replace(/^\d+\.\s*/,'').trim();
