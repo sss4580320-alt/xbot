@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POST STUDIO</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0c0e;--surface:#141418;--surface2:#1c1c22;--border:#2a2a34;--accent:#e8ff4a;--accent2:#4affb4;--text:#f0f0f5;--muted:#6b6b80;--danger:#ff5a5a;--twitter:#1da1f2;--r:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 60% 50% at 10% 20%,rgba(232,255,74,.04) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 40% at 90% 80%,rgba(74,255,180,.04) 0%,transparent 60%)}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+header{display:flex;align-items:flex-end;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;letter-spacing:-.5px}
+.logo span{color:var(--accent)}
+.sub{font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:4px}
+/* settings */
+.sbar{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 18px;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sbar label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.sbar input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:monospace;font-size:12px;padding:8px 12px;border-radius:7px;outline:none;transition:border-color .15s}
+.sbar input:focus{border-color:var(--accent)}
+.sbar input::placeholder{color:var(--muted)}
+.tip{font-size:11px;color:var(--muted);white-space:nowrap}
+.tip a{color:var(--accent);text-decoration:none}
+/* layout */
+.layout{display:grid;grid-template-columns:1fr 390px;gap:24px;align-items:start;margin-top:20px}
+@media(max-width:840px){.layout{grid-template-columns:1fr}}
+/* panel */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.ph{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.pt{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.badge{background:var(--surface2);border:1px solid var(--border);color:var(--accent);font-size:11px;font-family:'Syne',sans-serif;font-weight:700;padding:3px 10px;border-radius:100px}
+/* post list */
+.post-list{max-height:460px;overflow-y:auto}
+.post-list::-webkit-scrollbar{width:4px}
+.post-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.pi{padding:13px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;display:flex;align-items:flex-start;gap:12px}
+.pi:last-child{border-bottom:none}
+.pi:hover{background:var(--surface2)}
+.pi.sel{background:var(--surface2);border-left:3px solid var(--accent);padding-left:17px}
+.pn{font-family:'Syne',sans-serif;font-size:11px;color:var(--muted);min-width:24px;padding-top:2px}
+.pp{font-size:13px;line-height:1.6;color:var(--text);flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.pa{display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.pi:hover .pa{opacity:1}
+.ib{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;flex-shrink:0}
+.ib:hover{color:var(--text);border-color:var(--muted)}
+.ib.d:hover{color:var(--danger);border-color:var(--danger)}
+.add-area{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end}
+.add-area textarea{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:10px 12px;border-radius:8px;resize:none;height:68px;outline:none;line-height:1.6;transition:border-color .15s}
+.add-area textarea:focus{border-color:var(--accent)}
+.add-area textarea::placeholder{color:var(--muted)}
+/* buttons */
+.btn{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.05em;padding:10px 16px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.ba{background:var(--accent);color:#0c0c0e}.ba:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.bo{background:transparent;border:1px solid var(--border);color:var(--text)}.bo:hover{border-color:var(--muted);background:var(--surface2)}
+.bg{background:var(--accent2);color:#0c0c0e}.bg:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.bt{background:var(--twitter);color:#fff}.bt:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;filter:none!important}
+.bf{width:100%;justify-content:center;padding:13px;font-size:13px}
+/* workspace */
+.ws{display:flex;flex-direction:column;gap:14px}
+/* random */
+.rp{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
+.rp h3{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.brnd{width:100%;background:linear-gradient(135deg,#1c1c28,#1c2230);border:1px solid var(--border);color:var(--text);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:13px;border-radius:10px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.05em}
+.brnd:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(232,255,74,.1)}
+/* sub panel */
+.sp{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sph{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.spb{padding:15px 20px;display:flex;flex-direction:column;gap:11px}
+/* char count */
+.cc{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--muted);transition:color .2s}
+.cc.over{color:var(--danger)}.cc.warn{color:#ffaa4a}.cc.ok{color:var(--accent2)}
+/* editor */
+.eb{padding:18px 20px}
+.eb textarea{width:100%;background:transparent;border:none;color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:15px;line-height:1.7;resize:none;outline:none;min-height:130px}
+.eb textarea::placeholder{color:var(--muted)}
+.ef{padding:13px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:9px}
+.ea{display:flex;gap:8px;flex-wrap:wrap}
+/* form fields */
+.fl{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
+.fi{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:8px 12px;border-radius:7px;outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--accent)}
+.fi::placeholder{color:var(--muted)}
+.fdt{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:13px;padding:9px 12px;border-radius:8px;outline:none;transition:border-color .15s;cursor:pointer;color-scheme:dark}
+.fdt:focus{border-color:var(--accent)}
+/* account list */
+.acc-list-wrap{max-height:170px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:8px}
+.acc-list-wrap::-webkit-scrollbar{width:4px}
+.acc-list-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.acc-item{padding:9px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--border)}
+.acc-item:last-child{border-bottom:none}
+.acc-item:hover{background:rgba(255,255,255,.04)}
+.acc-item.active{background:rgba(232,255,74,.08);border-left:2px solid var(--accent);padding-left:10px}
+.acc-name{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-warn{font-size:10px;color:var(--danger);flex-shrink:0}
+.acc-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:color .15s;flex-shrink:0}
+.acc-del:hover{color:var(--danger)}
+/* status */
+.sm{padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.5;display:none}
+.sm.loading{display:block;background:rgba(74,255,180,.08);border:1px solid rgba(74,255,180,.2);color:var(--accent2)}
+.sm.error{display:block;background:rgba(255,90,90,.08);border:1px solid rgba(255,90,90,.2);color:var(--danger)}
+.sm.success{display:block;background:rgba(232,255,74,.08);border:1px solid rgba(232,255,74,.2);color:var(--accent)}
+.sp2{display:inline-block;width:12px;height:12px;border:2px solid rgba(74,255,180,.3);border-top-color:var(--accent2);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* empty */
+.es{padding:36px 20px;text-align:center;color:var(--muted)}
+.es .ic{font-size:28px;margin-bottom:10px}
+.es p{font-size:13px;line-height:1.6}
+/* toast */
+.toast{position:fixed;bottom:32px;right:32px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:13px;font-family:'Syne',sans-serif;font-weight:600;z-index:1000;transform:translateY(20px);opacity:0;transition:all .25s cubic-bezier(.34,1.56,.64,1);pointer-events:none;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateY(0);opacity:1}
+/* modal */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1;pointer-events:all}
+.md{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:520px;max-width:90vw;transform:scale(.95) translateY(8px);transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.mo.open .md{transform:scale(1) translateY(0)}
+.md h2{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;margin-bottom:16px}
+.md textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:14px;padding:14px;border-radius:10px;resize:none;height:160px;outline:none;line-height:1.7;margin-bottom:16px;transition:border-color .15s}
+.md textarea:focus{border-color:var(--accent)}
+.mdf{display:flex;justify-content:flex-end;gap:8px}
+/* conn */
+.cb{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-family:'Syne',sans-serif;font-weight:700;color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.g{background:var(--accent2);box-shadow:0 0 6px var(--accent2)}
+.dot.r{background:var(--danger)}
+/* add account form */
+.aaf{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;flex-direction:column;gap:9px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="logo">POST<span>·</span>STUDIO</div>
+      <div class="sub">X (Twitter) 投稿管理 &amp; AIリライトツール</div>
+    </div>
+  </header>
+
+  <div class="sbar">
+    <label>🔑 Anthropic API KEY</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." oninput="saveApiKey()" autocomplete="off" spellcheck="false">
+    <span class="tip"><a href="https://console.anthropic.com/settings/keys" target="_blank">取得はこちら</a></span>
+  </div>
+
+  <div class="layout">
+    <!-- Left: Post stock -->
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">投稿ストック</span>
+        <span class="badge" id="postCount">0件</span>
+      </div>
+      <div class="post-list" id="postList">
+        <div class="es"><div class="ic">📝</div><p>下の入力欄から投稿を追加してください<br>何十個でもストックできます</p></div>
+      </div>
+      <div class="add-area">
+        <textarea id="addInput" placeholder="新しい投稿文を入力...&#10;（Shift+Enterで追加）" onkeydown="handleAddKey(event)"></textarea>
+        <button class="btn ba" onclick="addPost()">追加</button>
+      </div>
+    </div>
+
+    <!-- Right: Workspace -->
+    <div class="ws">
+      <!-- Random -->
+      <div class="rp">
+        <h3>🎲 ランダム選択</h3>
+        <button class="brnd" onclick="pickRandom()"><span>シャッフルして1件選ぶ</span></button>
+      </div>
+
+      <!-- Editor -->
+      <div class="sp">
+        <div class="sph">
+          <span class="pt" id="editorLabel">編集エリア</span>
+          <span class="cc" id="charCount">0 / 280</span>
+        </div>
+        <div class="eb">
+          <textarea id="editorText" placeholder="投稿文を選択するか、直接入力してください..." oninput="onEditorInput()" rows="5"></textarea>
+        </div>
+        <div class="ef">
+          <div id="aiStatus" class="sm"></div>
+          <div class="ea">
+            <button class="btn bg" onclick="aiRewrite()" id="rewriteBtn">✨ AIリライト</button>
+            <button class="btn bo" onclick="copyText()">📋 コピー</button>
+            <button class="btn bo" onclick="saveBack()" id="saveBackBtn" style="display:none">💾 ストックに保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- X Bot Manager -->
+      <div class="sp">
+        <div class="sph">
+          <span class="pt">🐦 X Bot Manager 予約投稿</span>
+          <span class="cb"><span class="dot" id="connDot"></span><span id="connLabel">確認中...</span></span>
+        </div>
+        <div class="spb">
+
+          <!-- Account list -->
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label class="fl" style="margin-bottom:0">アカウント選択 <span id="accCountBadge" style="color:var(--accent);font-size:10px"></span></label>
+              <button class="btn bo" onclick="toggleAddAcc()" id="addAccBtn" style="padding:5px 10px;font-size:11px">＋ 追加</button>
+            </div>
+            <input class="fi" id="accSearch" placeholder="🔍 アカウント名で検索..." oninput="filterAccounts()" style="margin-bottom:6px">
+            <div class="acc-list-wrap" id="accList">
+              <div class="es" style="padding:16px"><p>読み込み中...</p></div>
+            </div>
+            <input type="hidden" id="selectedAccId">
+          </div>
+
+          <!-- Add account form -->
+          <div id="addAccForm" class="aaf" style="display:none">
+            <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">新しいアカウントを登録</div>
+            <input class="fi" id="accName" placeholder="アカウント名（例: @myaccount）">
+            <input class="fi" id="accApiKey" placeholder="API Key">
+            <input class="fi" id="accApiSecret" placeholder="API Secret" type="password">
+            <input class="fi" id="accAccessToken" placeholder="Access Token">
+            <input class="fi" id="accAccessTokenSecret" placeholder="Access Token Secret" type="password">
+            <div id="addAccStatus" class="sm"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn bo" style="flex:1;justify-content:center" onclick="toggleAddAcc()">キャンセル</button>
+              <button class="btn ba" style="flex:1;justify-content:center" onclick="registerAccount()">登録する</button>
+            </div>
+          </div>
+
+          <!-- Datetime -->
+          <div>
+            <label class="fl">投稿日時</label>
+            <input type="datetime-local" id="scheduleTime" class="fdt">
+          </div>
+
+          <div id="xbotStatus" class="sm"></div>
+          <button class="btn bt bf" id="xbotBtn" onclick="sendToXBot()">🚀 X Bot Manager に予約登録</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="mo" id="editModal">
+  <div class="md">
+    <h2>投稿を編集</h2>
+    <textarea id="editModalText" placeholder="投稿文を入力..."></textarea>
+    <div class="mdf">
+      <button class="btn bo" onclick="closeEdit()">キャンセル</button>
+      <button class="btn ba" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="ti">✓</span><span id="tm"></span></div>
+
+<script>
+const XBOT = '';
+let posts = JSON.parse(localStorage.getItem('ps_posts')||'[]');
+let selIdx = null, editIdx = null;
+let allAccounts = [], selAccId = null;
+
+// ── Post list ──
+function render() {
+  const list = document.getElementById('postList');
+  document.getElementById('postCount').textContent = posts.length + '件';
+  if (!posts.length) {
+    list.innerHTML = '<div class="es"><div class="ic">📝</div><p>下の入力欄から投稿を追加してください<br>何十個でもストックできます</p></div>';
+    return;
+  }
+  list.innerHTML = posts.map((p,i) => `
+    <div class="pi ${selIdx===i?'sel':''}" onclick="selPost(${i})">
+      <span class="pn">#${String(i+1).padStart(2,'0')}</span>
+      <div class="pp">${esc(p)}</div>
+      <div class="pa">
+        <button class="ib" onclick="openEdit(event,${i})">✏️</button>
+        <button class="ib d" onclick="delPost(event,${i})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+function save() { localStorage.setItem('ps_posts', JSON.stringify(posts)); render(); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addPost() {
+  const el = document.getElementById('addInput');
+  const t = el.value.trim(); if (!t) return;
+  posts.push(t); save(); el.value = '';
+  showToast('✓','追加しました');
+  setTimeout(() => document.getElementById('postList').scrollTop=99999, 50);
+}
+function handleAddKey(e) { if(e.key==='Enter'&&e.shiftKey){e.preventDefault();addPost();} }
+
+function delPost(e, i) {
+  e.stopPropagation();
+  if (!confirm('この投稿を削除しますか？')) return;
+  posts.splice(i,1);
+  if(selIdx===i){selIdx=null;clearEditor();}
+  else if(selIdx>i) selIdx--;
+  save(); showToast('🗑','削除しました');
+}
+
+function openEdit(e, i) {
+  e.stopPropagation(); editIdx=i;
+  document.getElementById('editModalText').value=posts[i];
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEdit() { document.getElementById('editModal').classList.remove('open'); editIdx=null; }
+function saveEdit() {
+  const t=document.getElementById('editModalText').value.trim(); if(!t) return;
+  posts[editIdx]=t; save(); closeEdit();
+  if(selIdx===editIdx){document.getElementById('editorText').value=t;updateCC();}
+  showToast('💾','保存しました');
+}
+document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeEdit();});
+
+function selPost(i) {
+  selIdx=i; render();
+  document.getElementById('editorText').value=posts[i];
+  updateCC();
+  document.getElementById('editorLabel').textContent=`#${String(i+1).padStart(2,'0')} 選択中`;
+  document.getElementById('saveBackBtn').style.display='none';
+  setSt('aiStatus','');
+}
+function clearEditor() {
+  document.getElementById('editorText').value=''; updateCC();
+  document.getElementById('editorLabel').textContent='編集エリア';
+  document.getElementById('saveBackBtn').style.display='none';
+}
+function onEditorInput() { updateCC(); }
+function updateCC() {
+  const len=document.getElementById('editorText').value.length;
+  const el=document.getElementById('charCount');
+  el.textContent=`${len} / 280`;
+  el.className='cc '+(len>280?'over':len>240?'warn':len>0?'ok':'');
+}
+
+function pickRandom() {
+  if(!posts.length){showToast('⚠️','投稿がありません');return;}
+  const i=Math.floor(Math.random()*posts.length);
+  selPost(i);
+  const items=document.querySelectorAll('.pi');
+  if(items[i]){
+    items[i].style.background='rgba(232,255,74,.15)';
+    setTimeout(()=>items[i].style.background='',400);
+    items[i].scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  showToast('🎲',`#${String(i+1).padStart(2,'0')} をランダム選択`);
+}
+
+// ── AI Rewrite ──
+async function aiRewrite() {
+  const text=document.getElementById('editorText').value.trim();
+  if(!text){showToast('⚠️','文章を入力してください');return;}
+  const apiKey=document.getElementById('apiKeyInput').value.trim();
+  if(!apiKey){showToast('🔑','APIキーを入力してください');return;}
+  const btn=document.getElementById('rewriteBtn'); btn.disabled=true;
+  setSt('aiStatus','loading','<span class="sp2"></span>AIが言い回しを変えています...');
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:
+        `あなたはX (Twitter) の投稿文のリライトを行うアシスタントです。以下のルールを厳守してください：
+- 元の文章の意味・トーン・雰囲気を完全に保つ
+- 少しだけ言い回しを変える（単語の言い換え、語順の微調整など）
+- 大幅な書き換えは絶対にしない
+- 絵文字がある場合は維持する
+- 文字数は元の文章と同程度に保つ
+- リライト後の文章だけを出力し、説明や前置きは一切不要
+
+元の文章：\n${text}`}]})
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const rw=data.content?.find(b=>b.type==='text')?.text?.trim();
+    if(!rw) throw new Error('レスポンスが空です');
+    document.getElementById('editorText').value=rw; updateCC();
+    document.getElementById('saveBackBtn').style.display='flex';
+    setSt('aiStatus',''); showToast('✨','リライト完了！');
+  } catch(err){ setSt('aiStatus','error','⚠️ '+err.message); }
+  finally { btn.disabled=false; }
+}
+
+function copyText() {
+  const t=document.getElementById('editorText').value;
+  if(!t){showToast('⚠️','文章がありません');return;}
+  navigator.clipboard.writeText(t).then(()=>showToast('📋','コピーしました'));
+}
+
+function saveBack() {
+  const t=document.getElementById('editorText').value.trim(); if(!t) return;
+  if(selIdx!==null){
+    if(confirm('「OK」→ 元の投稿を上書き保存\n「キャンセル」→ 新しい投稿として追加')){
+      posts[selIdx]=t; save(); showToast('💾','上書き保存しました');
+    } else { posts.push(t); save(); showToast('✅','新しい投稿として追加しました'); }
+  } else { posts.push(t); save(); showToast('✅','新しい投稿として追加しました'); }
+  document.getElementById('saveBackBtn').style.display='none';
+}
+
+// ── X Bot Manager: accounts ──
+function renderAccList(accounts) {
+  const wrap = document.getElementById('accList');
+  document.getElementById('accCountBadge').textContent = accounts.length ? `(${allAccounts.length}件)` : '';
+  if (!accounts.length) {
+    wrap.innerHTML = '<div class="es" style="padding:16px"><p>アカウントがありません</p></div>';
+    return;
+  }
+  wrap.innerHTML = accounts.map(a => `
+    <div class="acc-item ${selAccId==a.id?'active':''}" onclick="selectAcc(${a.id},'${esc(a.name)}')">
+      <span style="font-size:15px">${selAccId==a.id?'●':'○'}</span>
+      <span class="acc-name">${esc(a.name)}</span>
+      ${!a.hasKeys?'<span class="acc-warn">APIキー未設定</span>':''}
+      <button class="acc-del" onclick="deleteAcc(event,${a.id})" title="削除">🗑</button>
+    </div>`).join('');
+}
+
+function filterAccounts() {
+  const q = document.getElementById('accSearch').value.toLowerCase();
+  const filtered = q ? allAccounts.filter(a=>a.name.toLowerCase().includes(q)) : allAccounts;
+  renderAccList(filtered);
+}
+
+function selectAcc(id, name) {
+  selAccId = id;
+  document.getElementById('selectedAccId').value = id;
+  filterAccounts();
+  showToast('👤', name + ' を選択');
+}
+
+async function deleteAcc(e, id) {
+  e.stopPropagation();
+  if (!confirm('このアカウントを削除しますか？')) return;
+  try {
+    const res = await fetch(`${XBOT}/api/accounts/${id}`, { method:'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (selAccId === id) { selAccId = null; document.getElementById('selectedAccId').value = ''; }
+    showToast('🗑','アカウントを削除しました');
+    loadAccounts();
+  } catch(err) { showToast('⚠️','削除失敗: '+err.message); }
+}
+
+async function loadAccounts() {
+  const dot=document.getElementById('connDot'), lbl=document.getElementById('connLabel');
+  document.getElementById('accList').innerHTML='<div class="es" style="padding:16px"><p>読み込み中...</p></div>';
+  try {
+    const res=await fetch(`${XBOT}/api/accounts`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    allAccounts=await res.json();
+    dot.className='dot g'; lbl.textContent=`接続済み`;
+    filterAccounts();
+  } catch(err){
+    dot.className='dot r'; lbl.textContent='接続エラー';
+    document.getElementById('accList').innerHTML=`<div class="es" style="padding:16px"><p>接続失敗<br><small>${err.message}</small></p></div>`;
+  }
+}
+
+// ── Add account form ──
+function toggleAddAcc() {
+  const form=document.getElementById('addAccForm');
+  const open=form.style.display==='flex';
+  form.style.display=open?'none':'flex';
+  document.getElementById('addAccBtn').textContent=open?'＋ 追加':'✕ 閉じる';
+  if(!open){
+    ['accName','accApiKey','accApiSecret','accAccessToken','accAccessTokenSecret'].forEach(id=>document.getElementById(id).value='');
+    setSt('addAccStatus','');
+  }
+}
+
+async function registerAccount() {
+  const name=document.getElementById('accName').value.trim();
+  const apiKey=document.getElementById('accApiKey').value.trim();
+  const apiSecret=document.getElementById('accApiSecret').value.trim();
+  const accessToken=document.getElementById('accAccessToken').value.trim();
+  const accessTokenSecret=document.getElementById('accAccessTokenSecret').value.trim();
+  if(!name||!apiKey||!apiSecret||!accessToken||!accessTokenSecret){
+    setSt('addAccStatus','error','⚠️ 全ての項目を入力してください'); return;
+  }
+  setSt('addAccStatus','loading','<span class="sp2"></span>登録中...');
+  try {
+    const res=await fetch(`${XBOT}/api/accounts`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:Date.now(),name,apiKey,apiSecret,accessToken,accessTokenSecret})
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSt('addAccStatus','success','✅ 登録しました！');
+    setTimeout(()=>{toggleAddAcc();loadAccounts();},700);
+  } catch(err){ setSt('addAccStatus','error','⚠️ '+err.message); }
+}
+
+// ── Send to X Bot Manager ──
+async function sendToXBot() {
+  const text=document.getElementById('editorText').value.trim();
+  if(!text){showToast('⚠️','文章を入力してください');return;}
+  if(!selAccId){showToast('⚠️','アカウントを選択してください');return;}
+  const dt=document.getElementById('scheduleTime').value;
+  if(!dt){showToast('⚠️','投稿日時を選択してください');return;}
+  const dtFmt=dt.replace('T',' ').slice(0,16);
+  const btn=document.getElementById('xbotBtn'); btn.disabled=true;
+  setSt('xbotStatus','loading','<span class="sp2"></span>X Bot Manager に送信中...');
+  try {
+    const res=await fetch(`${XBOT}/api/posts`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:Date.now(),text,accountId:parseInt(selAccId),datetime:dtFmt})
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSt('xbotStatus','success',`✅ 予約完了！ ${dtFmt} に自動投稿されます`);
+    showToast('🚀','予約投稿を登録しました！');
+  } catch(err){ setSt('xbotStatus','error','⚠️ 送信エラー: '+err.message); }
+  finally { btn.disabled=false; }
+}
+
+// ── Helpers ──
+function setSt(id,type,msg=''){
+  const el=document.getElementById(id);
+  el.className='sm'+(type?' '+type:'');
+  el.innerHTML=msg;
+}
+let tTimer;
+function showToast(icon,msg){
+  const t=document.getElementById('toast');
+  document.getElementById('ti').textContent=icon;
+  document.getElementById('tm').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(tTimer);
+  tTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── Init ──
+function saveApiKey(){ localStorage.setItem('ps_apiKey',document.getElementById('apiKeyInput').value); }
+const sk=localStorage.getItem('ps_apiKey')||'';
+if(sk) document.getElementById('apiKeyInput').value=sk;
+
+const nd=new Date(Date.now()+30*60000); nd.setSeconds(0,0);
+document.getElementById('scheduleTime').value=new Date(nd-nd.getTimezoneOffset()*60000).toISOString().slice(0,16);
+
+if(!posts.length){
+  posts=["今日も一日頑張りましょう！小さな積み重ねが大きな成果につながります。#朝活","読書は最高の自己投資。1日15分でも続けると、1年で90時間以上になります📚","完璧を求めるより、まず行動することが大切。失敗から学べることは無限にあります。","コーヒー片手に作業中☕ 集中力が高まる午前中を最大限に活用したい。","人間関係で一番大切なのは、相手の話をちゃんと聞くこと。シンプルだけど難しい。"];
+  save();
+} else { render(); }
+
+loadAccounts();
+</script>
+</body>
+</html>
