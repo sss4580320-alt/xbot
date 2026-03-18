@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import json, os, threading, time, logging, sys, types, urllib.request
-from datetime import datetime, timezone, timedelta
+import json, os, threading, time, logging, sys, types
+from datetime import datetime
 from urllib.parse import urlparse
 
 if 'imghdr' not in sys.modules:
@@ -16,7 +16,6 @@ CORS(app)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def get_db():
     u = urlparse(DATABASE_URL)
@@ -26,7 +25,7 @@ def get_db():
         host=u.hostname,
         port=u.port or 5432,
         database=u.path.lstrip("/"),
-        ssl_context=None
+        ssl_context=True
     )
 
 def init_db():
@@ -61,6 +60,10 @@ except Exception as e:
 @app.route("/")
 def index():
     return send_from_directory(".", "index.html")
+
+@app.route("/studio")
+def studio():
+    return send_from_directory(".", "studio.html")
 
 @app.route("/api/accounts", methods=["GET"])
 def get_accounts():
@@ -136,40 +139,11 @@ def bulk_posts():
     db.close()
     return jsonify({"ok": True, "count": len(posts)})
 
-@app.route("/api/generate", methods=["POST"])
-def generate_tweets():
-    if not ANTHROPIC_API_KEY:
-        return jsonify({"error": "APIキーが設定されていません"}), 500
-    b = request.json
-    prompt = b.get("prompt", "")
-    count = b.get("count", 10)
-    payload = json.dumps({
-        "model": "claude-sonnet-4-20250514",
-        "max_tokens": 2000,
-        "messages": [{
-            "role": "user",
-            "content": f"以下のキャラクター設定でTwitter（X）の投稿文を{count}件生成してください。\n\nキャラクター設定: {prompt}\n\n条件:\n- 各ツイートは140文字以内\n- 自然な口語体\n- 番号付きリストで出力（例: 1. ツイート内容）\n- ツイートのみ出力"
-        }]
-    }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01"
-        }
-    )
-    with urllib.request.urlopen(req) as resp:
-        data = json.loads(resp.read())
-    return jsonify({"text": data["content"][0]["text"]})
-
 def scheduler_loop():
     logging.info("⏰ スケジューラー起動")
-    JST = timezone(timedelta(hours=9))
     while True:
         try:
-            now = datetime.now(JST).strftime("%Y-%m-%d %H:%M")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
             db = get_db()
             rows = db.run("""
                 SELECT p.id, p.text, a.api_key, a.api_secret, a.access_token, a.access_token_secret, a.name
