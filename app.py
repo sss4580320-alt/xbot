@@ -19,13 +19,17 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 def get_db():
     u = urlparse(DATABASE_URL)
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
     return pg8000.native.Connection(
         user=u.username,
         password=u.password,
         host=u.hostname,
         port=u.port or 5432,
         database=u.path.lstrip("/"),
-        ssl_context=True
+        ssl_context=ctx
     )
 
 def init_db():
